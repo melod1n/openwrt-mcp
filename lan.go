@@ -26,7 +26,7 @@ func validateListen(address string, allowLAN bool) (bool, error) {
 
 func lanToolAllowed(name string) bool {
 	switch name {
-	case "ubus_list", "ubus_call", "logread":
+	case "ubus_list", "ubus_call", "logread", "get_proxy_status", "get_network_packages", "get_routing_state", "get_logs_page", "tcp_probe", "dns_lookup":
 		return true
 	default:
 		return false

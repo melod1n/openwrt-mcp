@@ -324,7 +324,7 @@ func (s *Server) newServerForClient(client string) *mcp.Server {
 		})
 
 	addTool(s, srv, client, "ubus_call",
-		"Call any ubus method on the router. This is the main tool -- netifd, wireless, dnsmasq, "+
+		"Call an ubus method on the router (LAN mode permits only the independent diagnostic allowlist). netifd, wireless, dnsmasq, "+
 			"iwinfo, luci-rpc and the vendor's gl-* objects are all reachable through it. "+
 			"Policy scope is the string \"<object>.<method>\".",
 		func(in ubusCallIn) []string { return []string{in.Object + "." + in.Method} },
@@ -450,6 +450,7 @@ func (s *Server) newServerForClient(client string) *mcp.Server {
 			return out, fmt.Sprintf("%d lines", n), err
 		})
 
+	registerDiagnostics(s, srv, client)
 	return srv
 }
 

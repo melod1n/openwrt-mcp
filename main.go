@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -16,7 +17,7 @@ import (
 //
 // Released under the MIT Licence. See the LICENSE file.
 
-var version = "0.5.0-lan1"
+var version = "0.5.0-lan2"
 
 const sourceURL = "https://github.com/melod1n/openwrt-mcp"
 
@@ -176,6 +177,9 @@ func main() {
 		must(fs.Parse(args[1:]))
 		must(runStatus(*configPath, *statePath, *lines, *asJSON))
 
+	case "update":
+		must(runUpdateCLI(args[1:]))
+
 	case "version":
 		fmt.Printf("openwrt-mcp %s\n", version)
 
@@ -246,6 +250,7 @@ func usage() {
   policies                                    show current grants
   status   [--json] [--audit N]                daemon state, pairings, grants, recent audit
   mfa      enrol <client> [device] | status   optional TOTP second factor for gated tools
+  update                                      install latest verified release (local root only)
   version
 
 Reach it from a workstation with:
@@ -262,4 +267,11 @@ func must(err error) {
 
 func die(format string, a ...any) {
 	log.Fatalf("openwrt-mcp: "+format, a...)
+}
+
+func runUpdateCLI(args []string) error {
+	if len(args)!=0 { return fmt.Errorf("usage: openwrt-mcp update") }
+	cmd:=exec.Command("/usr/bin/openwrt-mcp-update")
+	cmd.Stdin,cmd.Stdout,cmd.Stderr=os.Stdin,os.Stdout,os.Stderr
+	return cmd.Run()
 }

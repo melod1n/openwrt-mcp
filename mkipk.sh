@@ -28,6 +28,7 @@ trap 'rm -rf "$BUILD"' EXIT
 # ---- data.tar.gz: the files as they land on the router
 DATA="$BUILD/data"
 mkdir -p "$DATA/usr/bin" "$DATA/etc/init.d" "$DATA/etc/config" "$DATA/lib/upgrade/keep.d"
+install -m 0755 "$SRC/files/usr/bin/openwrt-mcp-update" "$DATA/usr/bin/openwrt-mcp-update"
 install -m 0755 "$BIN"                              "$DATA/usr/bin/$PKG"
 install -m 0755 "$SRC/files/etc/init.d/$PKG"        "$DATA/etc/init.d/$PKG"
 install -m 0644 "$SRC/files/etc/config/$PKG"        "$DATA/etc/config/$PKG"
