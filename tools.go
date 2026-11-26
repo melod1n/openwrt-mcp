@@ -472,6 +472,9 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 	scopeOf func(In) []string,
 	fn func(context.Context, In) (string, string, error),
 ) {
+	if s.lanReadOnly && !lanToolAllowed(name) {
+		return
+	}
 	mcp.AddTool(srv, &mcp.Tool{Name: name, Description: desc},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
 			started := time.Now()
@@ -510,6 +513,13 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 				}
 			}
 
+			if s.lanReadOnly && name == "ubus_call" {
+				call, ok := any(in).(ubusCallIn)
+				if !ok || !lanUbusAllowed(call) {
+					reason := "denied: ubus method or arguments are not in the LAN diagnostic allowlist"
+					return finish(errResult(reason), OutcomeDenied, "", reason)
+				}
+			}
 			out, summary, err := fn(ctx, in)
 			if err != nil {
 				msg := err.Error()

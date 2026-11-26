@@ -1,10 +1,12 @@
 config server
-	# Loopback only, always. The daemon refuses to start on a routable address.
+	# Loopback by default. For trusted LAN diagnostics explicitly set allow_lan=1
+	# and listen to a specific private IPv4 address (never a wildcard).
 	# Reach it from a workstation with:
 	#   ssh -N -L 8730:127.0.0.1:8730 root@router
 	option listen '127.0.0.1:8730'
+	option allow_lan '0'
 	option audit '/etc/openwrt-mcp/audit.jsonl'
-	option audit_max_mb '16'
+	option audit_max_mb '1'
 
 # No policies by default: every gated tool is denied until you grant it.
 # ubus_list is the one exception -- introspection is always permitted, so an agent

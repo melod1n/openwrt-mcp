@@ -20,6 +20,8 @@ import (
 type Server struct {
 	configPath string
 	statePath  string
+	listen     string
+	lanReadOnly bool // fixed at startup; policy reload cannot change transport mode
 	audit      *Auditor
 	mfa        *MFAStore
 	tokens     *TokenStore
@@ -65,6 +67,10 @@ func NewServer(configPath, statePath string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	lanReadOnly, err := validateListen(cfg.Listen, cfg.AllowLAN)
+	if err != nil {
+		return nil, err
+	}
 	mfa, err := LoadMFA(path.Join(statePath, "mfa"))
 	if err != nil {
 		return nil, err
@@ -76,6 +82,8 @@ func NewServer(configPath, statePath string) (*Server, error) {
 	s := &Server{
 		configPath: configPath,
 		statePath:  statePath,
+		listen: cfg.Listen,
+		lanReadOnly: lanReadOnly,
 		mfa:        mfa,
 		config:     cfg,
 		tokens:     tokens,
@@ -108,11 +116,15 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Browser defence: a page in a local browser must not be able to drive the router.
-		if o := r.Header.Get("Origin"); o != "" && !isLoopbackOrigin(o) {
+		if o := r.Header.Get("Origin"); o != "" && (s.lanReadOnly || !isLoopbackOrigin(o)) {
 			http.Error(w, "forbidden origin", http.StatusForbidden)
 			return
 		}
-		raw := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		header := r.Header.Get("Authorization")
+		raw := ""
+		if strings.HasPrefix(header, "Bearer ") {
+			raw = strings.TrimPrefix(header, "Bearer ")
+		}
 		client, ok := s.tokens.Resolve(strings.TrimSpace(raw))
 		if !ok {
 			s.audit.Record(AuditEvent{
@@ -154,22 +166,12 @@ func isLoopbackOrigin(o string) bool {
 
 func (s *Server) Serve() error {
 	cfg := s.cfg()
-	// Refuse to bind anything but loopback. This is a deliberate hard stop rather than a
-	// default: reaching the router is SSH's job, and a mis-edited config must not silently
-	// expose a root-equivalent RPC surface to the LAN.
-	host, _, err := net.SplitHostPort(cfg.Listen)
-	if err != nil {
-		return fmt.Errorf("bad listen address %q: %w", cfg.Listen, err)
-	}
-	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
-		return fmt.Errorf("listen address %q is not loopback; openwrt-mcp refuses to bind a routable address (reach it with: ssh -L %s:%s root@router)", cfg.Listen, cfg.Listen, cfg.Listen)
-	}
-	ln, err := net.Listen("tcp", cfg.Listen)
+	ln, err := net.Listen("tcp", s.listen)
 	if err != nil {
 		return err
 	}
 	log.Printf("openwrt-mcp %s listening on %s (%d policies, %d paired clients)",
-		version, cfg.Listen, len(cfg.Policies), len(s.tokens.Clients()))
+		version, s.listen, len(cfg.Policies), len(s.tokens.Clients()))
 	srv := &http.Server{
 		Handler:           s.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
