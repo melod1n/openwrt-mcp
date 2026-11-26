@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - run: sh -n files/usr/bin/openwrt-mcp-update
       - run: go vet ./...
       - run: go test ./... -count=1
 
@@ -32,7 +33,7 @@ jobs:
           ipk=$(ls openwrt-mcp_*.ipk)
           tar -xzf "$ipk" -C /tmp
           tar -tzf /tmp/data.tar.gz | sort > /tmp/got
-          for f in ./usr/bin/openwrt-mcp ./etc/init.d/openwrt-mcp \
+          for f in ./usr/bin/openwrt-mcp ./usr/bin/openwrt-mcp-update ./etc/init.d/openwrt-mcp \
                    ./etc/config/openwrt-mcp ./lib/upgrade/keep.d/openwrt-mcp; do
             grep -qx "$f" /tmp/got || { echo "missing from package: $f"; exit 1; }
           done

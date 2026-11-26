@@ -1,0 +1,46 @@
+#!/bin/sh
+# Local root-only update. Never available as an MCP tool.
+set -eu
+[ "$(id -u)" = 0 ] || { echo "Run as root" >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl is required" >&2; exit 1; }
+command -v opkg >/dev/null || { echo "Only opkg OpenWrt is supported" >&2; exit 1; }
+arch=aarch64_cortex-a53
+opkg print-architecture | grep -q "^arch $arch " || { echo "Unsupported architecture" >&2; exit 1; }
+umask 077
+lock=/tmp/openwrt-mcp-update.lock
+mkdir "$lock" || { echo "Another update is running" >&2; exit 1; }
+trap 'rm -rf "$lock"' EXIT
+trap 'exit 1' HUP INT TERM
+cd "$lock"
+base=https://github.com/melod1n/openwrt-mcp/releases/latest/download
+fetch() { curl --proto '=https' --proto-redir '=https' -fsSL --connect-timeout 15 --max-time 120 "$base/$1" -o "$1"; }
+fetch VERSION
+new=$(cat VERSION)
+case "$new" in ''|*[!a-zA-Z0-9.-]*) echo "Invalid release version" >&2; exit 1;; esac
+current=$(opkg status openwrt-mcp | sed -n 's/^Version: //p' | head -n1)
+if [ -n "$current" ] && ! opkg compare-versions "$current" '<' "$new"; then echo "Already installed: $current (release: $new)"; exit 0; fi
+# Pin all following downloads to the selected release, never a moving latest.
+base="https://github.com/melod1n/openwrt-mcp/releases/download/v$new"
+pkg="openwrt-mcp_${new}_${arch}.ipk"
+fetch "$pkg.sha256"
+fetch "$pkg"
+sha256sum -c "$pkg.sha256"
+# Preserve an independent local copy of policy and token state, not logs.
+backup=$(mktemp -d /tmp/openwrt-mcp-backup.XXXXXX)
+[ ! -f /etc/config/openwrt-mcp ] || cp -p /etc/config/openwrt-mcp "$backup/config"
+for f in tokens mfa; do
+ [ ! -f "/etc/openwrt-mcp/$f" ] || cp -p "/etc/openwrt-mcp/$f" "$backup/$f"
+done
+echo "Private temporary backup: $backup (lost on reboot)"
+opkg install "$PWD/$pkg"
+[ "$(openwrt-mcp version)" = "openwrt-mcp $new" ] || { echo "Version mismatch; inspect backup $backup" >&2; exit 1; }
+listen=$(uci -q get 'openwrt-mcp.@server[0].listen' || echo '127.0.0.1:8730')
+i=0
+while [ "$i" -lt 10 ]; do
+ if curl --noproxy '*' -fsS --max-time 2 "http://$listen/health" | grep -Fq "openwrt-mcp $new ok"; then
+  echo "Updated to $new; health check OK. Backup: $backup"; exit 0
+ fi
+ i=$((i+1)); sleep 1
+done
+echo "Update installed but health check failed. Backup: $backup; inspect logread and reinstall previous IPK if needed." >&2
+exit 1

@@ -1,3 +1,5 @@
+> **Generic OpenWrt LAN preview (fork).** See [LAN setup](LAN.md) for the read-only mode. The upstream instructions below describe the original loopback deployment; GL.iNet UI files are not packaged in this fork.
+
 # openwrt-mcp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

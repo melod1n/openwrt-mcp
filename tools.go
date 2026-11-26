@@ -324,7 +324,7 @@ func (s *Server) newServerForClient(client string) *mcp.Server {
 		})
 
 	addTool(s, srv, client, "ubus_call",
-		"Call any ubus method on the router. This is the main tool -- netifd, wireless, dnsmasq, "+
+		"Call an ubus method on the router (LAN mode permits only the independent diagnostic allowlist). netifd, wireless, dnsmasq, "+
 			"iwinfo, luci-rpc and the vendor's gl-* objects are all reachable through it. "+
 			"Policy scope is the string \"<object>.<method>\".",
 		func(in ubusCallIn) []string { return []string{in.Object + "." + in.Method} },
@@ -450,6 +450,7 @@ func (s *Server) newServerForClient(client string) *mcp.Server {
 			return out, fmt.Sprintf("%d lines", n), err
 		})
 
+	registerDiagnostics(s, srv, client)
 	return srv
 }
 
@@ -472,6 +473,9 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 	scopeOf func(In) []string,
 	fn func(context.Context, In) (string, string, error),
 ) {
+	if s.lanReadOnly && !lanToolAllowed(name) {
+		return
+	}
 	mcp.AddTool(srv, &mcp.Tool{Name: name, Description: desc},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
 			started := time.Now()
@@ -510,6 +514,13 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 				}
 			}
 
+			if s.lanReadOnly && name == "ubus_call" {
+				call, ok := any(in).(ubusCallIn)
+				if !ok || !lanUbusAllowed(call) {
+					reason := "denied: ubus method or arguments are not in the LAN diagnostic allowlist"
+					return finish(errResult(reason), OutcomeDenied, "", reason)
+				}
+			}
 			out, summary, err := fn(ctx, in)
 			if err != nil {
 				msg := err.Error()

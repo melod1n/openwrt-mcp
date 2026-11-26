@@ -1,0 +1,35 @@
+name: release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: openwrt-mcp-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'melod1n/openwrt-mcp' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make ipk
+      - name: Publish immutable version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          version=$(sed -n 's/^var version = "\(.*\)"/\1/p' main.go)
+          test -n "$version"
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "Release exists; bump version for another release"
+            exit 0
+          fi
+          pkg="openwrt-mcp_${version}_aarch64_cortex-a53.ipk"
+          printf '%s\n' "$version" > VERSION
+          sha256sum "$pkg" > "$pkg.sha256"
+          gh release create "v$version" --target "$GITHUB_SHA" --title "OpenWrt MCP $version" --generate-notes "$pkg" "$pkg.sha256" VERSION

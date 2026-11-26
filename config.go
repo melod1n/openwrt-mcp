@@ -126,6 +126,7 @@ type Policy struct {
 
 type Config struct {
 	Listen     string
+	AllowLAN   bool
 	AuditPath  string
 	AuditMaxMB int
 	Policies   []*Policy
@@ -134,7 +135,7 @@ type Config struct {
 const (
 	defaultListen     = "127.0.0.1:8730"
 	defaultAuditPath  = "/etc/openwrt-mcp/audit.jsonl"
-	defaultAuditMaxMB = 16
+	defaultAuditMaxMB = 1
 )
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -151,6 +152,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	for _, s := range parseUCI(bufio.NewScanner(f)) {
 		switch s.Type {
 		case "server":
+			c.AllowLAN = s.Options["allow_lan"] == "1"
 			if v := s.Options["listen"]; v != "" {
 				c.Listen = v
 			}
