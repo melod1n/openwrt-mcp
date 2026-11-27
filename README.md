@@ -1,4 +1,4 @@
-> **Generic OpenWrt LAN preview (fork).** See [LAN setup](LAN.md) for the read-only mode. The upstream instructions below describe the original loopback deployment; GL.iNet UI files are not packaged in this fork.
+> **Generic OpenWrt LAN mode (fork).** See [LAN setup](LAN.md) for setup and security notes. The upstream instructions below describe the original loopback deployment; GL.iNet UI files are not packaged in this fork.
 
 # openwrt-mcp
 
@@ -355,7 +355,7 @@ Both were the first choice; neither works for a resident daemon.
 | `ubus_call` | `<object>.<method>` | The workhorse: netifd, wireless, dnsmasq, iwinfo, luci-rpc, `gl-*`. Replies over 8 KB have long arrays pruned — see Findings. |
 | `uci_apply` | `<config>.<section>.<option>`, or `<config>.<section>` for a section-level change | Stage → snapshot → commit → reload, rollback armed. Sets options, and creates or deletes whole sections. All scopes must be covered by one policy. |
 | `uci_confirm` | *(tool-level)* | Cancels the rollback timer. |
-| `exec` | `argv[0]` | Direct exec, **no shell** — no pipes, globs or redirection, and no quoting surface. |
+| `exec` | `argv[0]` | Direct argv execution; invoke `/bin/sh -c` explicitly for shell syntax. A broad `*` grant is root-equivalent. |
 | `logread` | *(tool-level)* | Split out from `exec` so logs can be granted without a root shell. |
 | `wg_new_client` | `wireguard_server.<server section>`, or `wireguard_server` when unspecified | Issues a WireGuard client: keypair, next free tunnel address, a peer the vendor UI still lists, hot-added with `wg set` so live sessions are not dropped. Returns the config **and a UTF-8 QR** to scan. Emits a private key — see below. |
 | `mfa_unlock` | *(ungated)* | Supplies a TOTP code to open the second-factor window. Ungated because it is how you satisfy the factor; it grants nothing without a valid current code. |

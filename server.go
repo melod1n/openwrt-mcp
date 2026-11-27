@@ -21,7 +21,7 @@ type Server struct {
 	configPath string
 	statePath  string
 	listen     string
-	lanReadOnly bool // fixed at startup; policy reload cannot change transport mode
+	lanMode  bool // fixed at startup; policy reload cannot change transport mode
 	audit      *Auditor
 	mfa        *MFAStore
 	tokens     *TokenStore
@@ -67,7 +67,7 @@ func NewServer(configPath, statePath string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	lanReadOnly, err := validateListen(cfg.Listen, cfg.AllowLAN)
+	lanMode, err := validateListen(cfg.Listen, cfg.AllowLAN)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func NewServer(configPath, statePath string) (*Server, error) {
 		configPath: configPath,
 		statePath:  statePath,
 		listen: cfg.Listen,
-		lanReadOnly: lanReadOnly,
+		lanMode: lanMode,
 		mfa:        mfa,
 		config:     cfg,
 		tokens:     tokens,
@@ -116,7 +116,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Browser defence: a page in a local browser must not be able to drive the router.
-		if o := r.Header.Get("Origin"); o != "" && (s.lanReadOnly || !isLoopbackOrigin(o)) {
+		if o := r.Header.Get("Origin"); o != "" && (s.lanMode || !isLoopbackOrigin(o)) {
 			http.Error(w, "forbidden origin", http.StatusForbidden)
 			return
 		}
