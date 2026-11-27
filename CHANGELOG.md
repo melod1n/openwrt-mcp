@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.1
+
+### Added
+
+- Expose the existing unrestricted `exec` tool in LAN mode. Commands remain behind the paired-client policy; a `*` scope grants arbitrary argv, including `/bin/sh -c`.
+
 ## v0.5.0
 
 **Issue a WireGuard client and show a QR to scan it**, plus `uci_get` to read configuration

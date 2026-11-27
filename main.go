@@ -17,7 +17,7 @@ import (
 //
 // Released under the MIT Licence. See the LICENSE file.
 
-var version = "0.5.0-lan2"
+var version = "0.5.1"
 
 const sourceURL = "https://github.com/melod1n/openwrt-mcp"
 
