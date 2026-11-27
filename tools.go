@@ -367,8 +367,7 @@ func (s *Server) newServerForClient(client string) *mcp.Server {
 		uciGet)
 
 	addTool(s, srv, client, "exec",
-		"Run a command on the router. argv is executed directly with no shell, so pipes, redirection and "+
-			"globs do not work -- pass a single program and its arguments. Policy scope is argv[0].",
+		"Run an arbitrary command on the router as root. argv is executed directly; invoke /bin/sh -c explicitly when you need pipelines, redirection, or shell syntax. A policy scope of '*' permits every executable; that is root-equivalent access.",
 		func(in execIn) []string {
 			if len(in.Argv) == 0 {
 				return nil
@@ -473,7 +472,7 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 	scopeOf func(In) []string,
 	fn func(context.Context, In) (string, string, error),
 ) {
-	if s.lanReadOnly && !lanToolAllowed(name) {
+	if s.lanMode && !lanToolAllowed(name) {
 		return
 	}
 	mcp.AddTool(srv, &mcp.Tool{Name: name, Description: desc},
@@ -514,7 +513,7 @@ func addTool[In any](s *Server, srv *mcp.Server, client, name, desc string,
 				}
 			}
 
-			if s.lanReadOnly && name == "ubus_call" {
+			if s.lanMode && name == "ubus_call" {
 				call, ok := any(in).(ubusCallIn)
 				if !ok || !lanUbusAllowed(call) {
 					reason := "denied: ubus method or arguments are not in the LAN diagnostic allowlist"

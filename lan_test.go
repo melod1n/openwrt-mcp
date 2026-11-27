@@ -30,13 +30,13 @@ func TestValidateListen(t *testing.T) {
 	}
 }
 
-func TestLANReadOnlyAllowlist(t *testing.T) {
-	for _, name := range []string{"exec", "uci_apply", "uci_confirm", "uci_get", "wg_new_client", "mfa_unlock", "future_tool"} {
+func TestLANToolAllowlist(t *testing.T) {
+	for _, name := range []string{"uci_apply", "uci_confirm", "uci_get", "wg_new_client", "mfa_unlock", "future_tool"} {
 		if lanToolAllowed(name) {
 			t.Errorf("unexpected LAN tool %s", name)
 		}
 	}
-	for _, name := range []string{"ubus_list", "ubus_call", "logread"} {
+	for _, name := range []string{"ubus_list", "ubus_call", "exec", "logread"} {
 		if !lanToolAllowed(name) {
 			t.Errorf("missing LAN tool %s", name)
 		}
@@ -75,7 +75,7 @@ func TestLANAuthentication(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &Server{
-		lanReadOnly: true,
+		lanMode: true,
 		tokens: tokens,
 		audit: NewAuditor(filepath.Join(dir, "audit.jsonl"), 1),
 	}

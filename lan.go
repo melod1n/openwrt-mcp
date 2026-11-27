@@ -26,7 +26,7 @@ func validateListen(address string, allowLAN bool) (bool, error) {
 
 func lanToolAllowed(name string) bool {
 	switch name {
-	case "ubus_list", "ubus_call", "logread", "get_proxy_status", "get_network_packages", "get_routing_state", "get_logs_page", "tcp_probe", "dns_lookup":
+	case "ubus_list", "ubus_call", "exec", "logread", "get_proxy_status", "get_network_packages", "get_routing_state", "get_logs_page", "tcp_probe", "dns_lookup":
 		return true
 	default:
 		return false
@@ -46,7 +46,7 @@ func lanStringArg(args map[string]any, key string, optional bool) bool {
 	return ok && interfaceName.MatchString(value)
 }
 
-// Never use wildcard method ACLs as a substitute for this independent read-only boundary.
+// Never use wildcard method ACLs as a substitute for this independent ubus boundary.
 func lanUbusAllowed(in ubusCallIn) bool {
 	switch in.Object {
 	case "system":
